@@ -1,0 +1,12 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+# SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN")
+# SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN")
+SALESFORCE_USERNAME = os.getenv("SALESFORCE_USERNAME")
+SALESFORCE_PASSWORD = os.getenv("SALESFORCE_PASSWORD")
+SALESFORCE_SECURITY_TOKEN = os.getenv("SALESFORCE_SECURITY_TOKEN")
+# SLACK_CHANNEL_ID = os.getenv("SLACK_CHANNEL_ID")
+# SLACK_SIGNING_SECRET = os.getenv("SLACK_SIGNING_SECRET")
+ENV = os.getenv("ENV")
