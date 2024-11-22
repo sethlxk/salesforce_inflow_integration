@@ -10,6 +10,7 @@ class Inflow:
             'Accept': 'application/json;version=2024-03-12'
             }
         self.webhook_subscription_id = INFLOW_WEBHOOK_SUBSCRIPTION_ID
+        
     def get_inflow_products(self):
         try:
             url = f"{self.url}/products"
