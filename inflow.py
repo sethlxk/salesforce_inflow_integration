@@ -54,6 +54,7 @@ class Inflow:
             else:
                 print("Failed to subscribe to webhook.")
                 print("Status Code:", response.status_code)
+                print("Error:", response.json())
         except Exception as e:
             print(f"Error subscribing to webhook: {e}")
 
