@@ -40,7 +40,6 @@ def webhook():
         time_difference = now - shippedDate
         if response['isCompleted'] == True and time_difference.total_seconds() <= 30:
             sf.update_order_status(sf.order_id)
-            print('order status updated to shipped')
     return {'status': 200}
     
 if __name__ == '__main__':
