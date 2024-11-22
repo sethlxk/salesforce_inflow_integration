@@ -3,8 +3,9 @@ from config import SALESFORCE_PASSWORD, SALESFORCE_SECURITY_TOKEN, SALESFORCE_US
 import datetime
 import pandas as pd
 import pytz
-from inflow import get_inflow_products
 import uuid
+
+from inflow import Inflow
 
 class SalesForce:
     def __init__(self) -> None:
@@ -13,7 +14,7 @@ class SalesForce:
                         security_token=SALESFORCE_SECURITY_TOKEN)
         self.order_id = None
         
-    def get_latest_order(self):
+    def get_latest_order_status_update(self):
         try:
             now = datetime.datetime.now(pytz.utc)  # Ensure UTC timezone
             five_minutes_ago = now - datetime.timedelta(minutes=1)
@@ -27,6 +28,9 @@ class SalesForce:
             """
             results = self.sf.query(query)['records']
             results_df = pd.DataFrame.from_dict(results)
+            if len(results_df) == 0:
+                print("No latest status updates in orders")
+                return {}, False
             results_df.drop('attributes', axis=1, inplace=True)
             results_df = pd.DataFrame.from_dict(results)
             account_id = results_df.iloc[0]['AccountId']
@@ -40,7 +44,8 @@ class SalesForce:
             state = shipping_address["state"]
             totalAmount = results_df.iloc[0]['TotalAmount']
             self.order_id = results_df.iloc[0]['Id']
-            inflow_products = get_inflow_products()
+            inflow = Inflow()
+            inflow_products = inflow.get_inflow_products()
             body = {
                 "salesOrderId": f"{uuid.uuid4()}",
                 "contactName": "",
@@ -74,10 +79,10 @@ class SalesForce:
                 "source": "salesforce",
                 "total": totalAmount
             }
-            return body
+            return body, True
         except Exception as e:
-            print(f"Error getting order: {e}")
-            return
+            print(f"Error getting latest order status update: {e}")
+            return {}, False
 
     def get_company_name(self, account_id):
         query = f""" SELECT Name FROM Account 
