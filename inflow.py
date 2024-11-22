@@ -53,3 +53,15 @@ class Inflow:
             return response
         except Exception as e:
             print(f"Error getting inflow order: {e}")
+    
+    def create_inflow_order(self, body):
+        try:
+            url = f"{self.url}/sales-orders"
+            payload = json.dumps(body)
+            response = requests.request("PUT", url, headers=self.request_headers, data=payload)
+            if response.status_code == 200:
+                print("Inflow order successfully created")
+            else:
+                print(f"Inflow order was not created: {response.status_code}")
+        except Exception as e:
+            print(f"Error creating inflow order: {e}")
