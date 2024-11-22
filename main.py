@@ -1,4 +1,3 @@
-import requests
 from inflow import Inflow
 from salesforce import SalesForce
 import json
