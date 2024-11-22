@@ -3,25 +3,35 @@ from config import SALESFORCE_PASSWORD, SALESFORCE_SECURITY_TOKEN, SALESFORCE_US
 import datetime
 import pandas as pd
 import pytz
+from inflow import get_inflow_products
+import uuid
 
 class SalesForce:
     def __init__(self) -> None:
         self.sf = Salesforce(username=SALESFORCE_USERNAME, 
                         password=SALESFORCE_PASSWORD, 
                         security_token=SALESFORCE_SECURITY_TOKEN)
+        self.order_id = None
+        
     def get_latest_order(self):
         try:
             now = datetime.datetime.now(pytz.utc)  # Ensure UTC timezone
-            five_minutes_ago = now - datetime.timedelta(minutes=5)
-            # Convert the timestamp to your local time zone (for example, US/Pacific)
-            local_timezone = pytz.timezone('US/Pacific')
-            five_minutes_ago_local = five_minutes_ago.astimezone(local_timezone)
+            five_minutes_ago = now - datetime.timedelta(minutes=1)
+            # Format the time in ISO 8601 format (Salesforce uses this format)
             five_minutes_ago_str = five_minutes_ago.strftime('%Y-%m-%dT%H:%M:%S.') + f"{five_minutes_ago.microsecond // 1000:03d}Z"
-            query = f""" SELECT Id, AccountId, OrderNumber, Name, Shipping_Date__c, ShippingAddress, ShipToContactId, TotalAmount FROM Order WHERE CreatedDate >= {five_minutes_ago_str}"""
+            query = f"""
+            SELECT Id, AccountId, OrderNumber, Name, Shipping_Date__c, ShippingAddress, ShipToContactId, TotalAmount 
+            FROM Order 
+            WHERE LastModifiedDate >= {five_minutes_ago_str}
+            AND Status = 'Approved to Ship'
+            """
             results = self.sf.query(query)['records']
             results_df = pd.DataFrame.from_dict(results)
             results_df.drop('attributes', axis=1, inplace=True)
             results_df = pd.DataFrame.from_dict(results)
+            account_id = results_df.iloc[0]['AccountId']
+            company_name = self.get_company_name(account_id)
+            orderNumber = results_df.iloc[0]['OrderNumber']
             shipping_address = results_df.iloc[0]['ShippingAddress']
             address = shipping_address["street"]
             city = shipping_address["city"]
@@ -29,8 +39,10 @@ class SalesForce:
             postalCode = shipping_address["postalCode"]
             state = shipping_address["state"]
             totalAmount = results_df.iloc[0]['TotalAmount']
+            self.order_id = results_df.iloc[0]['Id']
+            inflow_products = get_inflow_products()
             body = {
-                "salesOrderId": "eac030ff-883d-4cc8-b49d-f51c7d261069",
+                "salesOrderId": f"{uuid.uuid4()}",
                 "contactName": "",
                 "customerId": "fe64ce31-cdac-47ce-a0c1-ce12883a3a96",
                 "email": "",
@@ -40,11 +52,12 @@ class SalesForce:
                 "lines": [
                     {
                         "productId": "c5c7d68b-4a61-402e-96ed-f375a3e209c5",
-                        "salesOrderLineId": "eac030ff-883d-4cc8-b49d-f51c7d261069"
+                        "salesOrderLineId": f"{uuid.uuid4()}"
+                        #TODO: add product quantity and unit price
                     }
                 ],
                 "orderDate": "2023-11-30T00:00:00-05:00",
-                "orderNumber": "SO-000002",
+                "orderNumber": f"SO-{orderNumber}",
                 "phone": "",
                 "requestedShipDate": None,
                 "shippedDate": None,
@@ -57,10 +70,42 @@ class SalesForce:
                     "remarks": "",
                 },
                 "shipRemarks": "",
-                "shipToCompanyName": "",
-                "source": "",
+                "shipToCompanyName": company_name,
+                "source": "salesforce",
                 "total": totalAmount
             }
             return body
         except Exception as e:
             print(f"Error getting order: {e}")
+            return
+
+    def get_company_name(self, account_id):
+        query = f""" SELECT Name FROM Account 
+        WHERE Id = '{account_id}'"""
+        results = self.sf.query(query)['records']
+        results_df = pd.DataFrame.from_dict(results)
+        results_df.drop('attributes', axis=1, inplace=True)
+        name = results_df.iloc[0]['Name']
+        return name
+
+    def get_order_products(self, order_id):
+        query = f""" SELECT Product_Code__c, Product2Id, Product_Name__c, OrderId FROM OrderItem 
+        WHERE OrderId = '{order_id}'"""
+        results = self.sf.query(query)['records']
+        results_df = pd.DataFrame.from_dict(results)
+        results_df.drop('attributes', axis=1, inplace=True)
+        order_products_dict = {}
+        for row in results_df.itertuples():
+            order_products_dict['name'] = row.Product_Name__c
+            order_products_dict['sku'] = row.Product_Code__c
+        return order_products_dict
+    
+    def update_order_status(self, order_id):
+        order_data = {
+            'Status': 'Shipped'
+        }
+        try:
+            self.sf.Order.update(order_id, order_data)
+            print(f"Order {order_id} status updated to 'Shipped'.")
+        except Exception as e:
+            print(f"Error updating order {order_id}: {e}")
