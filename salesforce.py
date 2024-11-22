@@ -51,8 +51,9 @@ class SalesForce:
             self.order_id = results_df.iloc[0]["Id"]
             inflow = Inflow()
             inflow_products = inflow.get_inflow_products()
+            salesOrderId = uuid.uuid4()
             body = {
-                "salesOrderId": f"{uuid.uuid4()}",
+                "salesOrderId": f"{salesOrderId}",
                 "contactName": "",
                 "customerId": "fe64ce31-cdac-47ce-a0c1-ce12883a3a96",
                 "email": "",
@@ -62,7 +63,7 @@ class SalesForce:
                 "lines": [
                     {
                         "productId": "c5c7d68b-4a61-402e-96ed-f375a3e209c5",
-                        "salesOrderLineId": f"{uuid.uuid4()}",
+                        "salesOrderLineId": f"{salesOrderId}",
                         # TODO: add product quantity and unit price
                     }
                 ],
