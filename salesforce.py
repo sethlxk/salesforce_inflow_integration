@@ -40,6 +40,12 @@ class SalesForce:
             results_df = pd.DataFrame.from_dict(results)
             account_id = results_df.iloc[0]["AccountId"]
             company_name = self.get_company_name(account_id)
+            inflow = Inflow()
+            inflow_customers = inflow.get_inflow_customers()
+            customer_id = ""
+            for k,v in inflow_customers.items():
+                if company_name == k:
+                    customer_id = v
             orderNumber = results_df.iloc[0]["OrderNumber"]
             shipping_address = results_df.iloc[0]["ShippingAddress"]
             address = shipping_address["street"]
@@ -49,13 +55,12 @@ class SalesForce:
             state = shipping_address["state"]
             totalAmount = results_df.iloc[0]["TotalAmount"]
             self.order_id = results_df.iloc[0]["Id"]
-            inflow = Inflow()
             inflow_products = inflow.get_inflow_products()
             salesOrderId = uuid.uuid4()
             body = {
                 "salesOrderId": f"{salesOrderId}",
                 "contactName": "",
-                "customerId": "fe64ce31-cdac-47ce-a0c1-ce12883a3a96",
+                "customerId": customer_id,
                 "email": "",
                 "inventoryStatus": "Started",
                 "invoicedDate": None,
@@ -118,3 +123,43 @@ class SalesForce:
             print(f"Order {order_id} status updated to 'Shipped'.")
         except Exception as e:
             print(f"Error updating order {order_id}: {e}")
+            
+    def get_latest_customer(self):
+        try:
+            now = datetime.datetime.now(pytz.utc)  # Ensure UTC timezone
+            one_minute_ago = now - datetime.timedelta(minutes=1)
+            # Format the time in ISO 8601 format (Salesforce uses this format)
+            one_minute_ago_str = (
+                one_minute_ago.strftime("%Y-%m-%dT%H:%M:%S.")
+                + f"{one_minute_ago.microsecond // 1000:03d}Z"
+            )
+            query = f"""
+            SELECT Name 
+            FROM Account 
+            WHERE CreatedDate >= {one_minute_ago_str}
+            """
+            results = self.sf.query(query)["records"]
+            results_df = pd.DataFrame.from_dict(results)
+            if len(results_df) == 0:
+                print("No latest creation of customers")
+                return {}, False
+            results_df.drop("attributes", axis=1, inplace=True)
+            results_df = pd.DataFrame.from_dict(results)
+            name = results_df.iloc[0]["Name"]
+            customerId = uuid.uuid4()
+            body = {
+                "name": name,
+                "customerId": f"{customerId}"
+            }
+            return body, True
+        except Exception as e:
+            print(f"Error getting latest customer creation: {e}")
+            return {}, False
+
+    def create_product(self, body):
+        product_data = {"Name": body["name"], "List_Price__c": body["listPrice"]}
+        try:
+            self.sf.Product2.create(product_data)
+            print(f"Product {body['name']} created.")
+        except Exception as e:
+            print(f"Error creating product: {e}")
