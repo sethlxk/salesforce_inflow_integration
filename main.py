@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 app = Flask(__name__)
 sf = SalesForce()
 inflow = Inflow()
-inflow.subscribe_to_salesorder_webhook()
+inflow.subscribe_to_salesorder_webhook(logging)
 
 
 def poll_salesforce_for_updated_orders():
@@ -45,13 +45,13 @@ scheduler.start()
 
 
 @app.route("/webhook", methods=["POST"])
-def webhook(logger):
+def webhook():
     raw_data = request.data.decode("utf-8")
     try:
         data = json.loads(raw_data)
-        logger.info("Received JSON data", json.dumps(data, indent=2))
+        logging.info("Received JSON data", json.dumps(data, indent=2))
     except json.JSONDecodeError:
-        logger.error(f"Invalid JSON received: {raw_data}")
+        logging.error(f"Invalid JSON received: {raw_data}")
         return jsonify({"error": "Invalid JSON format"}), 400
     salesOrderId = data["salesOrderId"]
     response = inflow.get_inflow_order(salesOrderId)
