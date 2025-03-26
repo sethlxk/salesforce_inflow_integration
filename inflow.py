@@ -68,11 +68,11 @@ class Inflow:
             )
             if response.status_code == 200:
                 logger.info("Successfully subscribed to salesorder.updated webhook.")
-                logger.info("Response:", response.json())
+                logger.info(f"Response: {response.json()}")
             else:
                 logger.error("Failed to subscribe to webhook.")
-                logger.error("Status Code:", response.status_code)
-                logger.error("Error:", response.json())
+                logger.error(f"Status Code: {response.status_code}")
+                logger.error(f"Error: {response.json()}")
         except Exception as e:
             logger.error(f"Error subscribing to webhook: {e}")
 
