@@ -1,6 +1,6 @@
 from simple_salesforce import Salesforce
 from config import SALESFORCE_PASSWORD, SALESFORCE_SECURITY_TOKEN, SALESFORCE_USERNAME
-import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 import pytz
 import uuid
@@ -16,25 +16,24 @@ class SalesForce:
         )
         self.order_id = None
 
-    def get_latest_order_status_update(self):
+    def get_latest_order_status_update(self, logger):
         try:
-            now = datetime.datetime.now(pytz.utc)  # Ensure UTC timezone
-            five_minutes_ago = now - datetime.timedelta(minutes=1)
-            # Format the time in ISO 8601 format (Salesforce uses this format)
-            five_minutes_ago_str = (
-                five_minutes_ago.strftime("%Y-%m-%dT%H:%M:%S.")
-                + f"{five_minutes_ago.microsecond // 1000:03d}Z"
+            now = datetime.now(pytz.utc)
+            one_minute_ago = now - timedelta(minutes=1)
+            one_minute_ago_str = (
+                one_minute_ago.strftime("%Y-%m-%dT%H:%M:%S.")
+                + f"{one_minute_ago.microsecond // 1000:03d}Z"
             )
             query = f"""
             SELECT Id, AccountId, OrderNumber, Name, Shipping_Date__c, ShippingAddress, ShipToContactId, TotalAmount 
             FROM Order 
-            WHERE LastModifiedDate >= {five_minutes_ago_str}
+            WHERE LastModifiedDate >= {one_minute_ago_str}
             AND Status = 'Approved to Ship'
             """
             results = self.sf.query(query)["records"]
             results_df = pd.DataFrame.from_dict(results)
             if len(results_df) == 0:
-                print("No latest status updates in orders")
+                logger.info("No latest status updates in orders")
                 return {}, False
             results_df.drop("attributes", axis=1, inplace=True)
             results_df = pd.DataFrame.from_dict(results)
@@ -43,9 +42,8 @@ class SalesForce:
             inflow = Inflow()
             inflow_customers = inflow.get_inflow_customers()
             customer_id = ""
-            for k,v in inflow_customers.items():
-                if company_name == k:
-                    customer_id = v
+            if company_name in inflow_customers:
+                customer_id = inflow_customers[company_name]
             orderNumber = results_df.iloc[0]["OrderNumber"]
             shipping_address = results_df.iloc[0]["ShippingAddress"]
             address = shipping_address["street"]
@@ -55,24 +53,35 @@ class SalesForce:
             state = shipping_address["state"]
             totalAmount = results_df.iloc[0]["TotalAmount"]
             self.order_id = results_df.iloc[0]["Id"]
+            salesforce_order_products = self.get_order_products(self.order_id)
             inflow_products = inflow.get_inflow_products()
-            salesOrderId = uuid.uuid4()
+            salesOrderId = f"{uuid.uuid4()}"
+            linesArray = []
+            for sf_k in salesforce_order_products:
+                matches = [key for key in inflow_products if sf_k in key]
+                for match in matches:
+                    salesOrderLineId = f"{uuid.uuid4()}"
+                    lineBody = {
+                        "productId": inflow_products[match]["productId"],
+                        "salesOrderLineId": salesOrderLineId,
+                        "quantity": {
+                            "uomQuantity": str(
+                                salesforce_order_products[sf_k]["quantity"]
+                            )
+                        },
+                        "unitPrice": str(salesforce_order_products[sf_k]["listPrice"]),
+                    }
+                    linesArray.append(lineBody)
             body = {
-                "salesOrderId": f"{salesOrderId}",
+                "salesOrderId": salesOrderId,
                 "contactName": "",
                 "customerId": customer_id,
                 "email": "",
                 "inventoryStatus": "Started",
                 "invoicedDate": None,
                 "isCompleted": False,
-                "lines": [
-                    {
-                        "productId": "c5c7d68b-4a61-402e-96ed-f375a3e209c5",
-                        "salesOrderLineId": f"{salesOrderId}",
-                        # TODO: add product quantity and unit price
-                    }
-                ],
-                "orderDate": "2023-11-30T00:00:00-05:00",
+                "lines": linesArray,
+                "orderDate": now.strftime("%Y-%m-%d"),
                 "orderNumber": f"SO-{orderNumber}",
                 "phone": "",
                 "requestedShipDate": None,
@@ -92,7 +101,7 @@ class SalesForce:
             }
             return body, True
         except Exception as e:
-            print(f"Error getting latest order status update: {e}")
+            logger.error(f"Error getting latest order status update: {e}")
             return {}, False
 
     def get_company_name(self, account_id):
@@ -105,30 +114,43 @@ class SalesForce:
         return name
 
     def get_order_products(self, order_id):
-        query = f""" SELECT Product_Code__c, Product2Id, Product_Name__c, OrderId FROM OrderItem 
+        query = f""" SELECT ListPrice, Quantity, Product2Id, Product_Code__c, OrderId FROM OrderItem 
         WHERE OrderId = '{order_id}'"""
         results = self.sf.query(query)["records"]
-        results_df = pd.DataFrame.from_dict(results)
-        results_df.drop("attributes", axis=1, inplace=True)
+        order_products_df = pd.DataFrame.from_dict(results)
+        order_products_df.drop("attributes", axis=1, inplace=True)
+        query = f""" SELECT Id, InFlow__c From Product2 WHERE InFlow__c = True"""
+        results = self.sf.query(query)["records"]
+        products_df = pd.DataFrame.from_dict(results)
+        products_df.drop("attributes", axis=1, inplace=True)
+        results_df_final = pd.merge(
+            products_df,
+            order_products_df,
+            left_on="Id",
+            right_on="Product2Id",
+            how="inner",
+        )
         order_products_dict = {}
-        for row in results_df.itertuples():
-            order_products_dict["name"] = row.Product_Name__c
-            order_products_dict["sku"] = row.Product_Code__c
+        for row in results_df_final.itertuples():
+            order_products_dict[row.Product_Code__c] = {
+                "listPrice": row.ListPrice,
+                "quantity": row.Quantity,
+                "productId": row.Product2Id,
+            }
         return order_products_dict
 
-    def update_order_status(self, order_id):
+    def update_order_status(self, order_id, logger):
         order_data = {"Status": "Shipped"}
         try:
             self.sf.Order.update(order_id, order_data)
-            print(f"Order {order_id} status updated to 'Shipped'.")
+            logger.info(f"Order {order_id} status updated to 'Shipped'.")
         except Exception as e:
-            print(f"Error updating order {order_id}: {e}")
-            
-    def get_latest_customer(self):
+            logger.error(f"Error updating order {order_id}: {e}")
+
+    def get_latest_customer(self, logger):
         try:
-            now = datetime.datetime.now(pytz.utc)  # Ensure UTC timezone
-            one_minute_ago = now - datetime.timedelta(minutes=1)
-            # Format the time in ISO 8601 format (Salesforce uses this format)
+            now = datetime.now(pytz.utc)
+            one_minute_ago = now - timedelta(minutes=1)
             one_minute_ago_str = (
                 one_minute_ago.strftime("%Y-%m-%dT%H:%M:%S.")
                 + f"{one_minute_ago.microsecond // 1000:03d}Z"
@@ -141,25 +163,22 @@ class SalesForce:
             results = self.sf.query(query)["records"]
             results_df = pd.DataFrame.from_dict(results)
             if len(results_df) == 0:
-                print("No latest creation of customers")
+                logger.info("No latest creation of customers")
                 return {}, False
             results_df.drop("attributes", axis=1, inplace=True)
             results_df = pd.DataFrame.from_dict(results)
             name = results_df.iloc[0]["Name"]
             customerId = uuid.uuid4()
-            body = {
-                "name": name,
-                "customerId": f"{customerId}"
-            }
+            body = {"name": name, "customerId": f"{customerId}"}
             return body, True
         except Exception as e:
-            print(f"Error getting latest customer creation: {e}")
+            logger.error(f"Error getting latest customer creation: {e}")
             return {}, False
 
-    def create_product(self, body):
+    def create_product(self, body, logger):
         product_data = {"Name": body["name"], "List_Price__c": body["listPrice"]}
         try:
             self.sf.Product2.create(product_data)
-            print(f"Product {body['name']} created.")
+            logger.info(f"Product {body['name']} created.")
         except Exception as e:
-            print(f"Error creating product: {e}")
+            logger.error(f"Error creating product: {e}")
