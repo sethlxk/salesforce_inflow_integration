@@ -60,6 +60,7 @@ class SalesForce:
             state = shipping_address["state"]
             totalAmount = results_df.iloc[0]["TotalAmount"]
             self.order_id = results_df.iloc[0]["Id"]
+            logger.info(f"first: {self.order_id}")
             salesforce_order_products = self.get_order_products(self.order_id)
             inflow_products = inflow.get_inflow_products()
             salesOrderId = f"{uuid.uuid4()}"
