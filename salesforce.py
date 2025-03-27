@@ -18,10 +18,6 @@ class SalesForce:
             password=SALESFORCE_PASSWORD,
             security_token=SALESFORCE_SECURITY_TOKEN,
         )
-        logger.info(f"Salesforce instance URL: {self.sf.sf_instance}")
-        logger.info(f"Salesforce base URL: {self.sf.base_url}")
-        logger.info(f"Salesforce User ID: {self.sf.user_id}")
-        self.order_id = None
 
     def get_latest_order_status_update(self):
         try:
@@ -59,8 +55,7 @@ class SalesForce:
             postalCode = shipping_address["postalCode"]
             state = shipping_address["state"]
             totalAmount = results_df.iloc[0]["TotalAmount"]
-            self.order_id = results_df.iloc[0]["Id"]
-            logger.info(f"first: {self.order_id}")
+            order_id = results_df.iloc[0]["Id"]
             salesforce_order_products = self.get_order_products(self.order_id)
             inflow_products = inflow.get_inflow_products()
             salesOrderId = f"{uuid.uuid4()}"
@@ -84,6 +79,7 @@ class SalesForce:
                 "salesOrderId": salesOrderId,
                 "contactName": "",
                 "customerId": customer_id,
+                "customFields": {"custom1": order_id},
                 "email": "",
                 "inventoryStatus": "Started",
                 "invoicedDate": None,
