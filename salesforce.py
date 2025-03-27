@@ -6,6 +6,7 @@ import pytz
 import uuid
 from inflow import Inflow
 import logging
+import requests
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -148,8 +149,20 @@ class SalesForce:
     def update_order_status(self, order_id):
         order_data = {"Status": "Shipped"}
         try:
-            self.sf.Order.update(order_id, order_data)
-            logger.info(f"Order {order_id} status updated to 'Shipped'.")
+            url = f"https://{self.sf.sf_instance}/services/data/v59.0/sobjects/Order/{order_id}"
+            headers = {
+                "Authorization": f"Bearer {self.sf.session_id}",
+                "Content-Type": "application/json",
+                "X-HTTP-Method-Override": "PATCH"
+            }
+            response = requests.post(url, headers=headers, json=order_data, timeout=10)
+            if response.status_code in [200, 204]:
+                logger.info(f"Order {order_id} status updated to 'Shipped'.")
+            else:
+                logger.error(
+                    f"Failed to update order {order_id}. "
+                    f"Status: {response.status_code}, Response: {response.text}"
+                )
         except Exception as e:
             logger.exception(f"Error updating order {order_id}: {e}")
 
