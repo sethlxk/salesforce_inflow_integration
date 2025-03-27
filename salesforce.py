@@ -155,6 +155,8 @@ class SalesForce:
                 "Content-Type": "application/json",
                 "X-HTTP-Method-Override": "PATCH"
             }
+            logger.info(url)
+            logger.info(headers)
             response = requests.post(url, headers=headers, json=order_data, timeout=10)
             if response.status_code in [200, 204]:
                 logger.info(f"Order {order_id} status updated to 'Shipped'.")
