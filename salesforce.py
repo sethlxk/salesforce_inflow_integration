@@ -17,6 +17,8 @@ class SalesForce:
             password=SALESFORCE_PASSWORD,
             security_token=SALESFORCE_SECURITY_TOKEN,
         )
+        logger.info(f"Salesforce instance URL: {self.sf.sf_instance}")
+        logger.info(f"Salesforce base URL: {self.sf.base_url}")
         self.order_id = None
 
     def get_latest_order_status_update(self):
