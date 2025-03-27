@@ -19,6 +19,7 @@ class SalesForce:
         )
         logger.info(f"Salesforce instance URL: {self.sf.sf_instance}")
         logger.info(f"Salesforce base URL: {self.sf.base_url}")
+        logger.info(f"Salesforce User ID: {self.sf.user_id}")
         self.order_id = None
 
     def get_latest_order_status_update(self):
@@ -150,7 +151,7 @@ class SalesForce:
             self.sf.Order.update(order_id, order_data)
             logger.info(f"Order {order_id} status updated to 'Shipped'.")
         except Exception as e:
-            logger.error(f"Error updating order {order_id}: {e}")
+            logger.exception(f"Error updating order {order_id}: {e}")
 
     def get_latest_customer(self):
         try:
