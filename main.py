@@ -63,8 +63,8 @@ def webhook():
         shippedDate = datetime.fromisoformat(f"{shippedDate}")
         time_difference = now - shippedDate
         if response["isCompleted"] == True and time_difference.total_seconds() <= 30:
-            logger.info(f"main: {sf.order_id}")
-            sf.update_order_status(sf.order_id)
+            order_id = response["customFields"]["custom1"]
+            sf.update_order_status(order_id)
     return {"status": 200}
 
 
