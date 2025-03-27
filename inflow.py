@@ -9,7 +9,10 @@ from config import (
 )
 from datetime import datetime
 import pytz
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Inflow:
     def __init__(self) -> None:
@@ -20,20 +23,21 @@ class Inflow:
         }
         self.webhook_subscription_id = INFLOW_WEBHOOK_SUBSCRIPTION_ID
 
-    def get_inflow_products(self, logger):
+    def get_inflow_products(self):
         try:
             url = f"{self.url}/products"
             products_dict = {}
             count = 100
             after = None
+            session = requests.Session()
             while True:
                 params = {
                     "count": count,
                     "after": after,
                     "includeCount": True,
                 }
-                response = requests.get(
-                    url, headers=self.request_headers, params=params
+                response = session.get(
+                    url, headers=self.request_headers, params=params, timeout=10
                 ).json()
                 if not response:
                     break
@@ -52,7 +56,7 @@ class Inflow:
         except Exception as e:
             logger.error(f"Error getting inflow products: {e}")
 
-    def subscribe_to_salesorder_webhook(self, logger):
+    def subscribe_to_salesorder_webhook(self):
         try:
             WEBHOOK_URL = f"{SERVER_URL}/webhook"
             WEBHOOK_URL_INFLOW = f"{self.url}/webhooks"
@@ -76,7 +80,7 @@ class Inflow:
         except Exception as e:
             logger.error(f"Error subscribing to webhook: {e}")
 
-    def get_inflow_order(self, salesOrderId, logger):
+    def get_inflow_order(self, salesOrderId):
         try:
             url = f"{self.url}/sales-orders/{salesOrderId}"
             payload = {}
@@ -87,7 +91,7 @@ class Inflow:
         except Exception as e:
             logger.error(f"Error getting inflow order: {e}")
 
-    def create_inflow_order(self, body, logger):
+    def create_inflow_order(self, body):
         try:
             url = f"{self.url}/sales-orders"
             payload = json.dumps(body)
@@ -102,7 +106,7 @@ class Inflow:
         except Exception as e:
             logger.error(f"Error creating inflow order: {e}")
 
-    def create_inflow_customer(self, body, logger):
+    def create_inflow_customer(self, body):
         try:
             url = f"{self.url}/customers"
             payload = json.dumps(body)
@@ -117,20 +121,21 @@ class Inflow:
         except Exception as e:
             logger.error(f"Error creating inflow customer: {e}")
 
-    def get_inflow_customers(self, logger):
+    def get_inflow_customers(self):
         try:
             url = f"{self.url}/customers"
             customers_dict = {}
             count = 100
             after = None
+            session = requests.Session()
             while True:
                 params = {
                     "count": count,
                     "after": after,
                     "includeCount": True,
                 }
-                response = requests.get(
-                    url, headers=self.request_headers, params=params
+                response = session.get(
+                    url, headers=self.request_headers, params=params, timeout=10
                 ).json()
                 if not response:
                     break
@@ -143,7 +148,7 @@ class Inflow:
         except Exception as e:
             logger.error(f"Error in getting inflow customers: {e}")
 
-    def get_inflow_latest_product_update(self, logger):
+    def get_inflow_latest_product_update(self):
         try:
             products_dict = self.get_inflow_products()
             now = datetime.now(pytz.utc)
