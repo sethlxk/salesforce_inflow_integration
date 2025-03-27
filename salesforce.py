@@ -5,7 +5,10 @@ import pandas as pd
 import pytz
 import uuid
 from inflow import Inflow
+import logging
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class SalesForce:
     def __init__(self) -> None:
@@ -16,7 +19,7 @@ class SalesForce:
         )
         self.order_id = None
 
-    def get_latest_order_status_update(self, logger):
+    def get_latest_order_status_update(self):
         try:
             now = datetime.now(pytz.utc)
             one_minute_ago = now - timedelta(minutes=1)
@@ -139,7 +142,7 @@ class SalesForce:
             }
         return order_products_dict
 
-    def update_order_status(self, order_id, logger):
+    def update_order_status(self, order_id):
         order_data = {"Status": "Shipped"}
         try:
             self.sf.Order.update(order_id, order_data)
@@ -147,7 +150,7 @@ class SalesForce:
         except Exception as e:
             logger.error(f"Error updating order {order_id}: {e}")
 
-    def get_latest_customer(self, logger):
+    def get_latest_customer(self):
         try:
             now = datetime.now(pytz.utc)
             one_minute_ago = now - timedelta(minutes=1)
@@ -175,7 +178,7 @@ class SalesForce:
             logger.error(f"Error getting latest customer creation: {e}")
             return {}, False
 
-    def create_product(self, body, logger):
+    def create_product(self, body):
         product_data = {"Name": body["name"], "List_Price__c": body["listPrice"]}
         try:
             self.sf.Product2.create(product_data)
