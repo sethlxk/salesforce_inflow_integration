@@ -11,6 +11,7 @@ import requests
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class SalesForce:
     def __init__(self) -> None:
         self.sf = Salesforce(
@@ -151,8 +152,6 @@ class SalesForce:
                 "Authorization": f"Bearer {self.sf.session_id}",
                 "Content-Type": "application/json",
             }
-            logger.info(url)
-            logger.info(headers)
             response = requests.patch(url, headers=headers, json=order_data, timeout=10)
             if response.status_code in [200, 204]:
                 logger.info(f"Order {order_id} status updated to 'Shipped'.")
