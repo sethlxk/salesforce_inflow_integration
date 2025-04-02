@@ -98,8 +98,9 @@ class Inflow:
             response = requests.request(
                 "PUT", url, headers=self.request_headers, data=payload
             )
+            order_number = body["orderNumber"]
             if response.status_code == 200:
-                logger.info("Inflow order successfully created")
+                logger.info(f"Inflow order successfully created: {order_number}")
             else:
                 logger.error(f"Inflow order was not created: {response.status_code}")
                 logger.error(f"Inflow order was not created: {response.content}")
@@ -113,8 +114,9 @@ class Inflow:
             response = requests.request(
                 "PUT", url, headers=self.request_headers, data=payload
             )
+            name = body["name"]
             if response.status_code == 200:
-                logger.info("Inflow customer successfully created")
+                logger.info(f"Inflow customer successfully created: {name}")
             else:
                 logger.error(f"Inflow customer was not created: {response.status_code}")
                 logger.error(f"Inflow customer was not created: {response.content}")
@@ -162,7 +164,7 @@ class Inflow:
                 ts = datetime.fromisoformat(trimmed_iso_str)
                 time_difference = now - ts
                 if v["isFinished"] == "Yes" and time_difference.total_seconds() <= 60:
-                    body = {"name": v["name"], "listPrice": v["unitPrice"]}
+                    body = {"name": v["name"], "listPrice": v["unitPrice"], "sku": k}
                     return body, True
             logger.info("No latest creation of products")
             return body, False

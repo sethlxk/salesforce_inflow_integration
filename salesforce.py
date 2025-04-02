@@ -192,7 +192,11 @@ class SalesForce:
             return {}, False
 
     def create_product(self, body):
-        product_data = {"Name": body["name"], "List_Price__c": body["listPrice"]}
+        product_data = {
+            "Name": body["name"],
+            "List_Price__c": body["listPrice"],
+            "ProductCode": body["sku"],
+        }
         try:
             self.sf.Product2.create(product_data)
             logger.info(f"Product {body['name']} created.")
