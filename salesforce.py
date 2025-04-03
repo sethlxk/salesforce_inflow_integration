@@ -7,6 +7,7 @@ import uuid
 from inflow import Inflow
 import logging
 import requests
+from utils import variables_nonetype_conversion_to_string
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,7 +43,14 @@ class SalesForce:
             results_df.drop("attributes", axis=1, inplace=True)
             results_df = pd.DataFrame.from_dict(results)
             account_id = results_df.iloc[0]["AccountId"]
-            company_name = self.get_company_name(account_id)
+            company_name, website = self.get_company_details(account_id)
+            contact_id = results_df.iloc[0]["ShipToContactId"]
+            if contact_id is None:
+                contact_email, contact_name, contact_phone = "", "", ""
+            else:
+                contact_email, contact_name, contact_phone = (
+                    self.get_customer_contact_details(contact_id)
+                )
             inflow = Inflow()
             inflow_customers = inflow.get_inflow_customers()
             customer_id = ""
@@ -50,11 +58,36 @@ class SalesForce:
                 customer_id = inflow_customers[company_name]
             orderNumber = results_df.iloc[0]["OrderNumber"]
             shipping_address = results_df.iloc[0]["ShippingAddress"]
-            address = shipping_address["street"]
-            city = shipping_address["city"]
-            country = shipping_address["country"]
-            postalCode = shipping_address["postalCode"]
-            state = shipping_address["state"]
+            if shipping_address is None:
+                address, city, country, postalCode, state = "", "", "", "", ""
+            else:
+                address = shipping_address["street"]
+                city = shipping_address["city"]
+                country = shipping_address["country"]
+                postalCode = shipping_address["postalCode"]
+                state = shipping_address["state"]
+            possible_nonetype_array = [
+                website,
+                contact_email,
+                contact_name,
+                contact_phone,
+                address,
+                city,
+                country,
+                postalCode,
+                state,
+            ]
+            (
+                website,
+                contact_email,
+                contact_name,
+                contact_phone,
+                address,
+                city,
+                country,
+                postalCode,
+                state,
+            ) = variables_nonetype_conversion_to_string(*possible_nonetype_array)
             totalAmount = results_df.iloc[0]["TotalAmount"]
             order_id = results_df.iloc[0]["Id"]
             salesforce_order_products = self.get_order_products(order_id)
@@ -78,17 +111,18 @@ class SalesForce:
                     linesArray.append(lineBody)
             body = {
                 "salesOrderId": salesOrderId,
-                "contactName": "",
+                "contactName": contact_name,
+                "customer": {"customerId": customer_id, "website": website},
                 "customerId": customer_id,
                 "customFields": {"custom1": order_id},
-                "email": "",
+                "email": contact_email,
                 "inventoryStatus": "Started",
                 "invoicedDate": None,
                 "isCompleted": False,
                 "lines": linesArray,
                 "orderDate": now.strftime("%Y-%m-%d"),
                 "orderNumber": f"SO-{orderNumber}",
-                "phone": "",
+                "phone": contact_phone,
                 "requestedShipDate": None,
                 "shippedDate": None,
                 "shippingAddress": {
@@ -109,14 +143,15 @@ class SalesForce:
             logger.error(f"Error getting latest order status update: {e}")
             return {}, False
 
-    def get_company_name(self, account_id):
-        query = f""" SELECT Name FROM Account 
+    def get_company_details(self, account_id):
+        query = f""" SELECT Name, Website FROM Account 
         WHERE Id = '{account_id}'"""
         results = self.sf.query(query)["records"]
         results_df = pd.DataFrame.from_dict(results)
         results_df.drop("attributes", axis=1, inplace=True)
         name = results_df.iloc[0]["Name"]
-        return name
+        website = results_df.iloc[0]["Website"]
+        return name, website
 
     def get_order_products(self, order_id):
         query = f""" SELECT ListPrice, Quantity, Product2Id, Product_Code__c, OrderId FROM OrderItem 
@@ -202,3 +237,16 @@ class SalesForce:
             logger.info(f"Product {body['name']} created.")
         except Exception as e:
             logger.error(f"Error creating product: {e}")
+
+    def get_customer_contact_details(self, contact_id):
+        query = f"""
+        SELECT Email, Name, Phone
+        FROM Contact 
+        WHERE Id = '{contact_id}'
+        """
+        results = self.sf.query(query)["records"]
+        results_df = pd.DataFrame.from_dict(results)
+        email = results_df.iloc[0]["Email"]
+        name = results_df.iloc[0]["Name"]
+        phone = results_df.iloc[0]["Phone"]
+        return email, name, phone
