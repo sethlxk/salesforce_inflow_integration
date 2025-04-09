@@ -58,8 +58,10 @@ class SalesForce:
                 customer_id = inflow_customers[company_name]
             orderNumber = results_df.iloc[0]["OrderNumber"]
             shipping_address = results_df.iloc[0]["ShippingAddress"]
+            order_remarks = ""
             if shipping_address is None:
-                address, city, country, postalCode, state = "", "", "", "", ""
+                address, city, country, postalCode, state = "Hand Carry", "", "", "", ""
+                order_remarks = "Hand Carry"
             else:
                 address = shipping_address["street"]
                 city = shipping_address["city"]
@@ -122,6 +124,7 @@ class SalesForce:
                 "lines": linesArray,
                 "orderDate": now.strftime("%Y-%m-%d"),
                 "orderNumber": f"SO-{orderNumber}",
+                "orderRemarks": order_remarks,
                 "phone": contact_phone,
                 "requestedShipDate": None,
                 "shippedDate": None,
