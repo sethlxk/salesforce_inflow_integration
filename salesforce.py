@@ -41,7 +41,6 @@ class SalesForce:
                 logger.info("No latest status updates in orders")
                 return {}, False
             results_df.drop("attributes", axis=1, inplace=True)
-            results_df = pd.DataFrame.from_dict(results)
             account_id = results_df.iloc[0]["AccountId"]
             company_name, website = self.get_company_details(account_id)
             contact_id = results_df.iloc[0]["ShipToContactId"]
@@ -220,7 +219,6 @@ class SalesForce:
                 logger.info("No latest creation of customers")
                 return {}, False
             results_df.drop("attributes", axis=1, inplace=True)
-            results_df = pd.DataFrame.from_dict(results)
             name = results_df.iloc[0]["Name"]
             customerId = uuid.uuid4()
             body = {"name": name, "customerId": f"{customerId}"}
