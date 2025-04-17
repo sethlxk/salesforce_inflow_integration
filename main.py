@@ -63,8 +63,17 @@ def webhook():
         shippedDate = datetime.fromisoformat(f"{shippedDate}")
         time_difference = now - shippedDate
         if response["isCompleted"] == True and time_difference.total_seconds() <= 30:
+            tracking_numbers = ""
+            if len(response["shipLines"]) == 1:
+                tracking_numbers = response["shipLines"][0]["trackingNumber"]
+            else:
+                for shipline in response["shipLines"]:
+                    tracking_numbers = (
+                        tracking_numbers + shipline["trackingNumber"] + ","
+                    )
+                tracking_numbers = tracking_numbers[:-1]
             order_id = response["customFields"]["custom1"]
-            sf.update_order_status(order_id)
+            sf.update_order_status(order_id, tracking_numbers)
     return {"status": 200}
 
 
