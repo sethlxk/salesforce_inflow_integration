@@ -181,8 +181,8 @@ class SalesForce:
             }
         return order_products_dict
 
-    def update_order_status(self, order_id):
-        order_data = {"Status": "Shipped"}
+    def update_order_status(self, order_id, tracking_numbers):
+        order_data = {"Status": "Shipped", "Tracking_Number_s__c": tracking_numbers}
         try:
             url = f"https://{self.sf.sf_instance}/services/data/v59.0/sobjects/Order/{order_id}"
             headers = {

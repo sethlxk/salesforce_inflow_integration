@@ -82,7 +82,7 @@ class Inflow:
 
     def get_inflow_order(self, salesOrderId):
         try:
-            url = f"{self.url}/sales-orders/{salesOrderId}"
+            url = f"{self.url}/sales-orders/{salesOrderId}?include=shipLines"
             payload = {}
             response = requests.request(
                 "GET", url, headers=self.request_headers, data=payload
