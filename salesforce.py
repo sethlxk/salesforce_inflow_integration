@@ -30,7 +30,7 @@ class SalesForce:
                 + f"{one_minute_ago.microsecond // 1000:03d}Z"
             )
             query = f"""
-            SELECT Id, AccountId, OrderNumber, Name, Shipping_Date__c, ShippingAddress, ShipToContactId, TotalAmount 
+            SELECT Id, AccountId, OrderNumber, Name, Shipping_Date__c, ShippingAddress, ShipToContactId 
             FROM Order 
             WHERE LastModifiedDate >= {one_minute_ago_str}
             AND Status = 'Approved to Ship'
@@ -89,7 +89,6 @@ class SalesForce:
                 postalCode,
                 state,
             ) = variables_nonetype_conversion_to_string(*possible_nonetype_array)
-            totalAmount = results_df.iloc[0]["TotalAmount"]
             order_id = results_df.iloc[0]["Id"]
             salesforce_order_products = self.get_order_products(order_id)
             inflow_products = inflow.get_inflow_products()
@@ -138,7 +137,6 @@ class SalesForce:
                 "shipRemarks": "",
                 "shipToCompanyName": company_name,
                 "source": "salesforce",
-                "total": totalAmount,
             }
             return body, True
         except Exception as e:
