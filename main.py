@@ -63,7 +63,7 @@ scheduler = BackgroundScheduler()
 scheduler.add_job(poll, "interval", minutes=1)
 scheduler.start()
 
-
+salesforce_orders_to_update_set = set()
 @app.route("/webhook", methods=["POST"])
 def webhook():
     raw_data = request.data.decode("utf-8")
@@ -93,6 +93,10 @@ def webhook():
                 tracking_numbers = tracking_numbers[:-1]
             order_id = response["customFields"]["custom1"]
             order_number = response["orderNumber"]
+            if order_number in salesforce_orders_to_update_set:
+                return {"status": 200}
+            else:
+                salesforce_orders_to_update_set.add(order_number)
             is_successful, message = sf.update_order_status(
                 order_id, tracking_numbers, order_number
             )
