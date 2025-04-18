@@ -179,7 +179,7 @@ class SalesForce:
             }
         return order_products_dict
 
-    def update_order_status(self, order_id, tracking_numbers):
+    def update_order_status(self, order_id, tracking_numbers, order_number):
         order_data = {"Status": "Shipped", "Tracking_Number_s__c": tracking_numbers}
         try:
             url = f"https://{self.sf.sf_instance}/services/data/v59.0/sobjects/Order/{order_id}"
@@ -189,14 +189,16 @@ class SalesForce:
             }
             response = requests.patch(url, headers=headers, json=order_data, timeout=10)
             if response.status_code in [200, 204]:
-                logger.info(f"Order {order_id} status updated to 'Shipped'.")
+                logger.info(f"Order {order_number} status updated to 'Shipped'.")
+                return True, response.text
             else:
                 logger.error(
-                    f"Failed to update order {order_id}. "
+                    f"Failed to update order {order_number}. "
                     f"Status: {response.status_code}, Response: {response.text}"
                 )
+                return False, response.text
         except Exception as e:
-            logger.exception(f"Error updating order {order_id}: {e}")
+            logger.exception(f"Error updating order {order_number}: {e}")
 
     def get_latest_customer(self):
         try:
@@ -233,9 +235,12 @@ class SalesForce:
         }
         try:
             self.sf.Product2.create(product_data)
-            logger.info(f"Product {body['name']} created.")
+            name = body["name"]
+            logger.info(f"Product {name} created.")
+            return True, name, "success"
         except Exception as e:
             logger.error(f"Error creating product: {e}")
+            return False, name, e
 
     def get_customer_contact_details(self, contact_id):
         query = f"""
