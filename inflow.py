@@ -14,6 +14,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class Inflow:
     def __init__(self) -> None:
         self.url = f"{INFLOW_BASE_URL}/{INFLOW_COMPANY_ID}"
@@ -101,9 +102,11 @@ class Inflow:
             order_number = body["orderNumber"]
             if response.status_code == 200:
                 logger.info(f"Inflow order successfully created: {order_number}")
+                return True, order_number, response.content
             else:
                 logger.error(f"Inflow order was not created: {response.status_code}")
                 logger.error(f"Inflow order was not created: {response.content}")
+                return False, order_number, response.content
         except Exception as e:
             logger.error(f"Error creating inflow order: {e}")
 
@@ -117,9 +120,11 @@ class Inflow:
             name = body["name"]
             if response.status_code == 200:
                 logger.info(f"Inflow customer successfully created: {name}")
+                return True, name, response.content
             else:
                 logger.error(f"Inflow customer was not created: {response.status_code}")
                 logger.error(f"Inflow customer was not created: {response.content}")
+                return False, name, response.content
         except Exception as e:
             logger.error(f"Error creating inflow customer: {e}")
 
