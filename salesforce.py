@@ -159,6 +159,16 @@ class SalesForce:
         results = self.sf.query(query)["records"]
         order_products_df = pd.DataFrame.from_dict(results)
         order_products_df.drop("attributes", axis=1, inplace=True)
+        order_products_df = order_products_df.groupby(
+            "Product_Code__c", as_index=False
+        ).agg(
+            {
+                "Quantity": "sum",
+                "ListPrice": "first",
+                "Product2Id": "first",
+                "OrderId": "first",
+            }
+        )
         query = f""" SELECT Id, InFlow__c From Product2 WHERE InFlow__c = True"""
         results = self.sf.query(query)["records"]
         products_df = pd.DataFrame.from_dict(results)
