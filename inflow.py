@@ -23,6 +23,7 @@ class Inflow:
             "Accept": "application/json;version=2024-03-12",
         }
         self.webhook_subscription_id = INFLOW_WEBHOOK_SUBSCRIPTION_ID
+        self.products_state = self.get_inflow_products()
 
     def get_inflow_products(self):
         try:
@@ -168,8 +169,13 @@ class Inflow:
                     trimmed_iso_str = ts[:26] + ts[-6:]
                 ts = datetime.fromisoformat(trimmed_iso_str)
                 time_difference = now - ts
-                if v["isFinished"] == "Yes" and time_difference.total_seconds() <= 60:
+                if (
+                    self.products_state[k]["isFinished"] == ""
+                    and v["isFinished"] == "Yes"
+                    and time_difference.total_seconds() <= 60
+                ):
                     body = {"name": v["name"], "listPrice": v["unitPrice"], "sku": k}
+                    self.products_state[k]["isFinished"] = "Yes"
                     return body, True
             logger.info("No latest creation of products")
             return body, False
