@@ -97,18 +97,19 @@ class SalesForce:
             for sf_k in salesforce_order_products:
                 matches = [key for key in inflow_products if sf_k in key]
                 for match in matches:
-                    salesOrderLineId = f"{uuid.uuid4()}"
-                    lineBody = {
-                        "productId": inflow_products[match]["productId"],
-                        "salesOrderLineId": salesOrderLineId,
-                        "quantity": {
-                            "uomQuantity": str(
-                                salesforce_order_products[sf_k]["quantity"]
-                            )
-                        },
-                        "unitPrice": str(salesforce_order_products[sf_k]["listPrice"]),
-                    }
-                    linesArray.append(lineBody)
+                    if inflow_products[match]["activeRevision"] == "Yes":
+                        salesOrderLineId = f"{uuid.uuid4()}"
+                        lineBody = {
+                            "productId": inflow_products[match]["productId"],
+                            "salesOrderLineId": salesOrderLineId,
+                            "quantity": {
+                                "uomQuantity": str(
+                                    salesforce_order_products[sf_k]["quantity"]
+                                )
+                            },
+                            "unitPrice": str(salesforce_order_products[sf_k]["listPrice"]),
+                        }
+                        linesArray.append(lineBody)
             body = {
                 "salesOrderId": salesOrderId,
                 "contactName": contact_name,
