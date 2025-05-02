@@ -50,6 +50,7 @@ class Inflow:
                         "timestamp": r["lastModifiedDateTime"],
                         "isFinished": r["customFields"]["custom2"],
                         "unitPrice": r["customFields"]["custom3"],
+                        "activeRevision": r["customFields"]["custom6"]
                     }
                 if len(response) < count:
                     break
@@ -177,7 +178,7 @@ class Inflow:
                     body = {"name": v["name"], "listPrice": v["unitPrice"], "sku": k}
                     self.products_state[k]["isFinished"] = "Yes"
                     return body, True
-            logger.info("No latest creation of products")
+            logger.info("No latest creation of finished products")
             return body, False
         except Exception as e:
             logger.error(f"Error in getting latest inflow product update: {e}")
