@@ -173,7 +173,7 @@ class Inflow:
                 if (
                     self.products_state[k]["isFinished"] == ""
                     and v["isFinished"] == "Yes"
-                    and time_difference.total_seconds() <= 60
+                    and time_difference.total_seconds() <= 30
                 ):
                     body = {"name": v["name"], "listPrice": v["unitPrice"], "sku": k}
                     self.products_state[k]["isFinished"] = "Yes"
